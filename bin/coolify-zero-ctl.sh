@@ -63,6 +63,8 @@ ${BOLD}COMMANDS:${NC}
 
   ${GREEN}validate${NC}                      Validate configuration file
 
+  ${GREEN}update${NC}                        Update coolify-zero to the latest version
+
   ${GREEN}version${NC}                       Show version information
 
   ${GREEN}help${NC}                          Show this help message
@@ -581,6 +583,62 @@ cmd_validate() {
     fi
 }
 
+# Update command
+cmd_update() {
+    echo -e "${BLUE}Updating Coolify Zero to the latest version...${NC}\n"
+
+    # Check if running as root
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${RED}ERROR: Update requires root privileges${NC}" >&2
+        echo "Please run with sudo: ${CYAN}sudo coolify-zero update${NC}"
+        exit 1
+    fi
+
+    # Backup current config
+    local backup_dir="/tmp/coolify-zero-update-backup-$(date +%s)"
+    echo -e "${BLUE}Creating config backup at: $backup_dir${NC}"
+    mkdir -p "$backup_dir"
+
+    if [[ -f /etc/coolify-zero/config.yaml ]]; then
+        cp /etc/coolify-zero/config.yaml "$backup_dir/config.yaml"
+        echo -e "${GREEN}✓ Config backed up${NC}"
+    fi
+
+    # Download and run install script
+    echo -e "\n${BLUE}Downloading latest version from GitHub...${NC}"
+
+    local install_url="https://raw.githubusercontent.com/light-merlin-dark/coolify-zero/main/install.sh"
+    local temp_install="/tmp/coolify-zero-install-$$.sh"
+
+    if curl -fsSL "$install_url" -o "$temp_install"; then
+        echo -e "${GREEN}✓ Downloaded install script${NC}"
+    else
+        echo -e "${RED}✗ Failed to download install script${NC}" >&2
+        exit 1
+    fi
+
+    # Run installer
+    echo -e "\n${BLUE}Running installer...${NC}\n"
+    if bash "$temp_install"; then
+        echo -e "\n${GREEN}✓ Update complete!${NC}"
+
+        # Clean up
+        rm -f "$temp_install"
+
+        echo -e "\n${BOLD}Updated to:${NC} $(coolify-zero version)"
+        echo -e "\n${BOLD}Config backup saved at:${NC} $backup_dir"
+        echo -e "\n${BOLD}Service status:${NC}"
+        systemctl status coolify-zero --no-pager -l | head -10
+
+        exit 0
+    else
+        echo -e "\n${RED}✗ Update failed${NC}" >&2
+        echo -e "${YELLOW}Config backup available at: $backup_dir${NC}"
+        rm -f "$temp_install"
+        exit 1
+    fi
+}
+
 # Version command
 cmd_version() {
     echo "Coolify Zero v$VERSION"
@@ -615,6 +673,9 @@ main() {
             ;;
         validate)
             cmd_validate "$@"
+            ;;
+        update)
+            cmd_update "$@"
             ;;
         version)
             cmd_version "$@"
