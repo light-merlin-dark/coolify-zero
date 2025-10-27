@@ -11,8 +11,8 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # Installation paths
-INSTALL_DIR="/opt/failover-manager"
-CONFIG_DIR="/etc/failover-manager"
+INSTALL_DIR="/opt/coolify-zero"
+CONFIG_DIR="/etc/coolify-zero"
 BIN_DIR="/usr/local/bin"
 SYSTEMD_DIR="/etc/systemd/system"
 
@@ -138,19 +138,19 @@ install_scripts() {
     echo -e "${GREEN}✓ Library files installed${NC}"
 
     # Copy binaries
-    cp "$SCRIPT_DIR/bin/failover-manager.sh" "$INSTALL_DIR/bin/"
-    cp "$SCRIPT_DIR/bin/failover-ctl.sh" "$INSTALL_DIR/bin/"
+    cp "$SCRIPT_DIR/bin/coolify-zero.sh" "$INSTALL_DIR/bin/"
+    cp "$SCRIPT_DIR/bin/coolify-zero-ctl.sh" "$INSTALL_DIR/bin/"
     echo -e "${GREEN}✓ Binary files installed${NC}"
 
     # Make scripts executable
-    chmod +x "$INSTALL_DIR/bin/failover-manager.sh"
-    chmod +x "$INSTALL_DIR/bin/failover-ctl.sh"
+    chmod +x "$INSTALL_DIR/bin/coolify-zero.sh"
+    chmod +x "$INSTALL_DIR/bin/coolify-zero-ctl.sh"
     chmod +x "$INSTALL_DIR/lib/"*.sh
     echo -e "${GREEN}✓ Scripts made executable${NC}"
 
     # Create symlink for CLI
-    ln -sf "$INSTALL_DIR/bin/failover-ctl.sh" "$BIN_DIR/failover-ctl"
-    echo -e "${GREEN}✓ CLI symlink created: $BIN_DIR/failover-ctl${NC}\n"
+    ln -sf "$INSTALL_DIR/bin/coolify-zero-ctl.sh" "$BIN_DIR/coolify-zero"
+    echo -e "${GREEN}✓ CLI symlink created: $BIN_DIR/coolify-zero${NC}\n"
 }
 
 # Create config file
@@ -176,7 +176,7 @@ manager:
   docker_network: coolify
 
 # Services to manage
-# Add services using: failover-ctl enable <service> [options]
+# Add services using: coolify-zero enable <service> [options]
 services: {}
 EOF
 
@@ -188,7 +188,7 @@ EOF
 create_systemd_service() {
     echo -e "${BLUE}Creating systemd service...${NC}"
 
-    cat > "$SYSTEMD_DIR/failover-manager.service" <<EOF
+    cat > "$SYSTEMD_DIR/coolify-zero.service" <<EOF
 [Unit]
 Description=Coolify Zero - Zero-downtime deployment manager
 Documentation=https://github.com/light-merlin-dark/coolify-zero
@@ -197,12 +197,12 @@ Requires=docker.service
 
 [Service]
 Type=simple
-ExecStart=$INSTALL_DIR/bin/failover-manager.sh
+ExecStart=$INSTALL_DIR/bin/coolify-zero.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=failover-manager
+SyslogIdentifier=coolify-zero
 
 # Security settings
 NoNewPrivileges=true
@@ -227,20 +227,20 @@ enable_service() {
     echo -e "${GREEN}✓ Systemd reloaded${NC}"
 
     # Enable service
-    systemctl enable failover-manager.service
+    systemctl enable coolify-zero.service
     echo -e "${GREEN}✓ Service enabled${NC}"
 
     # Start service
-    systemctl start failover-manager.service
+    systemctl start coolify-zero.service
     echo -e "${GREEN}✓ Service started${NC}\n"
 
     # Check status
     sleep 2
-    if systemctl is-active --quiet failover-manager.service; then
+    if systemctl is-active --quiet coolify-zero.service; then
         echo -e "${GREEN}✓ Service is running${NC}\n"
     else
         echo -e "${RED}✗ Service failed to start${NC}" >&2
-        echo "Check logs with: journalctl -u failover-manager -n 50" >&2
+        echo "Check logs with: journalctl -u coolify-zero -n 50" >&2
         exit 1
     fi
 }
@@ -251,55 +251,55 @@ show_success() {
 ${BOLD}${GREEN}=== Installation Complete! ===${NC}
 
 ${BOLD}What's Installed:${NC}
-  - Manager daemon: $INSTALL_DIR/bin/failover-manager.sh
-  - CLI tool: $BIN_DIR/failover-ctl
+  - Manager daemon: $INSTALL_DIR/bin/coolify-zero.sh
+  - CLI tool: $BIN_DIR/coolify-zero
   - Libraries: $INSTALL_DIR/lib/
   - Config: $CONFIG_DIR/config.yaml
-  - Service: failover-manager.service
+  - Service: coolify-zero.service
 
 ${BOLD}Next Steps:${NC}
 
 ${BOLD}1. Enable failover for a service:${NC}
-   ${BLUE}failover-ctl enable <service-name> \\
+   ${BLUE}coolify-zero enable <service-name> \\
      --primary-pattern='<pattern-to-find-primary>' \\
      --health-endpoint='/health' \\
      --health-port=3000 \\
      --version-path='.version'${NC}
 
    ${BOLD}Example for translation-api:${NC}
-   ${BLUE}failover-ctl enable translation-api \\
+   ${BLUE}coolify-zero enable translation-api \\
      --primary-pattern='translation-api-eo' \\
      --health-endpoint='/health' \\
      --health-port=3000 \\
      --version-path='.engineVersion'${NC}
 
 ${BOLD}2. Update Traefik configuration:${NC}
-   ${BLUE}failover-ctl traefik <service-name>${NC}
+   ${BLUE}coolify-zero traefik <service-name>${NC}
 
    Follow the instructions to add failover URL to your Traefik config.
 
 ${BOLD}3. Check status:${NC}
-   ${BLUE}failover-ctl status${NC}
-   ${BLUE}failover-ctl list${NC}
+   ${BLUE}coolify-zero status${NC}
+   ${BLUE}coolify-zero list${NC}
 
 ${BOLD}4. Monitor logs:${NC}
-   ${BLUE}journalctl -u failover-manager -f${NC}
+   ${BLUE}journalctl -u coolify-zero -f${NC}
 
 ${BOLD}Useful Commands:${NC}
-  failover-ctl help              - Show help
-  failover-ctl list              - List all services
-  failover-ctl status [service]  - Show service status
-  failover-ctl logs <service>    - View service logs
-  failover-ctl disable <service> - Disable failover
+  coolify-zero help              - Show help
+  coolify-zero list              - List all services
+  coolify-zero status [service]  - Show service status
+  coolify-zero logs <service>    - View service logs
+  coolify-zero disable <service> - Disable failover
 
 ${BOLD}Configuration:${NC}
   Edit: $CONFIG_DIR/config.yaml
-  Validate: ${BLUE}failover-ctl validate${NC}
+  Validate: ${BLUE}coolify-zero validate${NC}
 
 ${BOLD}Service Management:${NC}
-  Status:  ${BLUE}systemctl status failover-manager${NC}
-  Restart: ${BLUE}systemctl restart failover-manager${NC}
-  Logs:    ${BLUE}journalctl -u failover-manager -f${NC}
+  Status:  ${BLUE}systemctl status coolify-zero${NC}
+  Restart: ${BLUE}systemctl restart coolify-zero${NC}
+  Logs:    ${BLUE}journalctl -u coolify-zero -f${NC}
 
 ${GREEN}Happy deploying with zero downtime! 🚀${NC}
 

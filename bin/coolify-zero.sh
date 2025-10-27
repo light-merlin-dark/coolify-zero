@@ -1,5 +1,5 @@
 #!/bin/bash
-# failover-manager.sh - Main daemon for managing failover containers
+# coolify-zero.sh - Main daemon for managing failover containers
 set -euo pipefail
 
 # Get actual script directory (resolve symlinks)

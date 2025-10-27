@@ -1,5 +1,5 @@
 #!/bin/bash
-# failover-ctl.sh - CLI tool for managing failover containers
+# coolify-zero-ctl.sh - CLI tool for managing failover containers
 set -euo pipefail
 
 # Get actual script directory (resolve symlinks)
@@ -40,7 +40,7 @@ usage() {
 ${BOLD}Coolify Zero${NC} - CLI Tool v$VERSION
 
 ${BOLD}USAGE:${NC}
-  failover-ctl <command> [options]
+  coolify-zero <command> [options]
 
 ${BOLD}COMMANDS:${NC}
   ${GREEN}enable${NC} <service>              Enable failover for a service
@@ -69,20 +69,20 @@ ${BOLD}COMMANDS:${NC}
 
 ${BOLD}EXAMPLES:${NC}
   # Enable failover for translation-api
-  failover-ctl enable translation-api \\
+  coolify-zero enable translation-api \\
     --primary-pattern='translation-api-eo' \\
     --health-endpoint='/health' \\
     --health-port=3000 \\
     --version-path='.engineVersion'
 
   # Check status
-  failover-ctl status translation-api
+  coolify-zero status translation-api
 
   # View logs
-  failover-ctl logs translation-api -f
+  coolify-zero logs translation-api -f
 
   # Disable failover
-  failover-ctl disable translation-api
+  coolify-zero disable translation-api
 
 EOF
 }
@@ -129,7 +129,7 @@ cmd_enable() {
     # Validate required arguments
     if [[ -z "$service" ]]; then
         echo -e "${RED}ERROR: Service name required${NC}" >&2
-        echo "Usage: failover-ctl enable <service> --primary-pattern=<pattern>" >&2
+        echo "Usage: coolify-zero enable <service> --primary-pattern=<pattern>" >&2
         exit 1
     fi
 
@@ -204,17 +204,17 @@ cmd_enable() {
     if [[ "$traefik_configured" == "false" ]]; then
         echo -e "\n${BOLD}NEXT STEPS:${NC}"
         echo -e "1. Update Traefik configuration manually:"
-        echo -e "   ${CYAN}failover-ctl traefik $service${NC}"
+        echo -e "   ${CYAN}coolify-zero traefik $service${NC}"
         echo -e "\n2. Check status:"
-        echo -e "   ${CYAN}failover-ctl status $service${NC}"
+        echo -e "   ${CYAN}coolify-zero status $service${NC}"
         echo -e "\n3. Monitor manager logs:"
-        echo -e "   ${CYAN}journalctl -u failover-manager -f${NC}"
+        echo -e "   ${CYAN}journalctl -u coolify-zero -f${NC}"
     else
         echo -e "\n${BOLD}NEXT STEPS:${NC}"
         echo -e "1. Check status:"
-        echo -e "   ${CYAN}failover-ctl status $service${NC}"
+        echo -e "   ${CYAN}coolify-zero status $service${NC}"
         echo -e "\n2. Monitor manager logs:"
-        echo -e "   ${CYAN}journalctl -u failover-manager -f${NC}"
+        echo -e "   ${CYAN}journalctl -u coolify-zero -f${NC}"
         echo -e "\n3. Test deployment:"
         echo -e "   Deploy via Coolify and verify zero downtime"
     fi
@@ -226,7 +226,7 @@ cmd_disable() {
 
     if [[ -z "$service" ]]; then
         echo -e "${RED}ERROR: Service name required${NC}" >&2
-        echo "Usage: failover-ctl disable <service>" >&2
+        echo "Usage: coolify-zero disable <service>" >&2
         exit 1
     fi
 
@@ -433,7 +433,7 @@ cmd_logs() {
 
     if [[ -z "$service" ]]; then
         echo -e "${RED}ERROR: Service name required${NC}" >&2
-        echo "Usage: failover-ctl logs <service> [-f]" >&2
+        echo "Usage: coolify-zero logs <service> [-f]" >&2
         exit 1
     fi
 
@@ -459,7 +459,7 @@ cmd_traefik() {
 
     if [[ -z "$service" ]]; then
         echo -e "${RED}ERROR: Service name required${NC}" >&2
-        echo "Usage: failover-ctl traefik <service>" >&2
+        echo "Usage: coolify-zero traefik <service>" >&2
         exit 1
     fi
 
@@ -473,7 +473,7 @@ cmd_traefik() {
     cat <<EOF
 ${BOLD}=== Traefik Configuration for $service ===${NC}
 
-${GREEN}NOTE: Traefik configuration is automatically created during 'failover-ctl enable'${NC}
+${GREEN}NOTE: Traefik configuration is automatically created during 'coolify-zero enable'${NC}
 ${GREEN}These manual instructions are provided for reference or troubleshooting.${NC}
 
 To enable zero-downtime deployments, add the failover container to your
@@ -528,14 +528,14 @@ cmd_sync() {
 
     if [[ -z "$service" ]]; then
         echo -e "${RED}ERROR: Service name required${NC}" >&2
-        echo "Usage: failover-ctl sync <service>"
+        echo "Usage: coolify-zero sync <service>"
         exit 1
     fi
 
     # Verify service is enabled
     if ! get_config "services.${service}.enabled" | grep -q "true"; then
         echo -e "${RED}ERROR: Service '$service' is not enabled${NC}" >&2
-        echo "Run 'failover-ctl enable $service' first"
+        echo "Run 'coolify-zero enable $service' first"
         exit 1
     fi
 
@@ -560,7 +560,7 @@ cmd_sync() {
         echo -e "${BLUE}The manager will recreate it on the next check cycle.${NC}"
         echo -e "${BLUE}Check interval: $(get_config 'manager.check_interval' || echo '60')s${NC}"
         echo ""
-        echo -e "Monitor with: ${CYAN}failover-ctl status $service${NC}"
+        echo -e "Monitor with: ${CYAN}coolify-zero status $service${NC}"
         exit 0
     else
         echo -e "${RED}✗ Failed to remove failover container${NC}" >&2

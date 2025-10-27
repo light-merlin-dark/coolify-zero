@@ -2,7 +2,7 @@
 # config.sh - Configuration file parsing and management
 
 # Default config file location
-CONFIG_FILE="${CONFIG_FILE:-/etc/failover-manager/config.yaml}"
+CONFIG_FILE="${CONFIG_FILE:-/etc/coolify-zero/config.yaml}"
 
 # Color codes for output
 RED='\033[0;31m'

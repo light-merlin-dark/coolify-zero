@@ -6,19 +6,19 @@ Requires=docker.service
 
 [Service]
 Type=simple
-ExecStart=/opt/failover-manager/bin/failover-manager.sh
+ExecStart=/opt/coolify-zero/bin/coolify-zero.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=failover-manager
+SyslogIdentifier=coolify-zero
 
 # Security settings
 NoNewPrivileges=true
 PrivateTmp=true
 
 # Environment
-Environment="CONFIG_FILE=/etc/failover-manager/config.yaml"
+Environment="CONFIG_FILE=/etc/coolify-zero/config.yaml"
 
 [Install]
 WantedBy=multi-user.target

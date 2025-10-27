@@ -40,13 +40,13 @@ Manager runs as systemd service, maintains hot standby containers, and syncs aft
 ### CLI Management
 ```bash
 # Enable failover for a service
-failover-ctl enable translation-api --primary-pattern='api-main'
+coolify-zero enable translation-api --primary-pattern='api-main'
 
 # Check status
-failover-ctl status
+coolify-zero status
 
 # View logs
-failover-ctl logs translation-api -f
+coolify-zero logs translation-api -f
 ```
 
 ### Traefik Integration
@@ -93,13 +93,13 @@ sudo ./install.sh
 
 ```bash
 # Enable failover for your service
-failover-ctl enable my-api \
+coolify-zero enable my-api \
   --primary-pattern='my-api-prod' \
   --health-endpoint='/health' \
   --health-port=3000
 
 # Check status
-failover-ctl status my-api
+coolify-zero status my-api
 
 # Deploy via Coolify -> zero downtime!
 ```
@@ -146,50 +146,50 @@ After:     User → Traefik → Primary (new version) + Failover (syncing)
 
 ```bash
 # Enable failover for a service
-failover-ctl enable <service> [options]
+coolify-zero enable <service> [options]
 
 # Disable and cleanup failover
-failover-ctl disable <service>
+coolify-zero disable <service>
 
 # Show service status
-failover-ctl status [service]
+coolify-zero status [service]
 
 # List all managed services
-failover-ctl list
+coolify-zero list
 
 # View logs
-failover-ctl logs <service> [-f]
+coolify-zero logs <service> [-f]
 
 # Show Traefik config instructions
-failover-ctl traefik <service>
+coolify-zero traefik <service>
 
 # Force immediate sync
-failover-ctl sync <service>
+coolify-zero sync <service>
 
 # Validate configuration
-failover-ctl validate
+coolify-zero validate
 ```
 
 ## Uninstall
 
 ```bash
 # Disable all services first
-failover-ctl list | xargs -I {} failover-ctl disable {}
+coolify-zero list | xargs -I {} coolify-zero disable {}
 
 # Stop and disable service
-sudo systemctl stop failover-manager
-sudo systemctl disable failover-manager
+sudo systemctl stop coolify-zero
+sudo systemctl disable coolify-zero
 
 # Remove files
-sudo rm -rf /opt/failover-manager
-sudo rm /usr/local/bin/failover-ctl
-sudo rm /etc/systemd/system/failover-manager.service
-sudo rm -rf /etc/failover-manager
+sudo rm -rf /opt/coolify-zero
+sudo rm /usr/local/bin/coolify-zero
+sudo rm /etc/systemd/system/coolify-zero.service
+sudo rm -rf /etc/coolify-zero
 ```
 
 ## Configuration
 
-Configuration stored in `/etc/failover-manager/config.yaml`:
+Configuration stored in `/etc/coolify-zero/config.yaml`:
 
 ```yaml
 manager:
@@ -211,13 +211,13 @@ services:
 ### Manager not syncing
 ```bash
 # Check manager logs
-journalctl -u failover-manager -f
+journalctl -u coolify-zero -f
 
 # Check service status
-failover-ctl status my-api
+coolify-zero status my-api
 
 # Manually trigger sync
-failover-ctl sync my-api
+coolify-zero sync my-api
 ```
 
 ### Failover not receiving traffic
@@ -235,8 +235,8 @@ docker logs failover-my-api
 docker ps --filter name=my-pattern
 
 # Update pattern if needed
-failover-ctl disable my-api
-failover-ctl enable my-api --primary-pattern='new-pattern' ...
+coolify-zero disable my-api
+coolify-zero enable my-api --primary-pattern='new-pattern' ...
 ```
 
 ## License
