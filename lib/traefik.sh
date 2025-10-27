@@ -217,28 +217,26 @@ update_load_balancer_config() {
 
     awk -v failover="$failover_url" '
     /^[[:space:]]*- url:/ {
-        if (!added) {
-            # Print the primary URL line
-            print
-            # Check if next line has weight, if not add it
-            getline nextline
-            if (nextline !~ /weight:/) {
-                # Add weight to primary
-                match($0, /^[[:space:]]*/)
-                indent = substr($0, RSTART, RLENGTH)
-                print indent "  weight: 100"
-                print nextline
-            } else {
-                print nextline
-            }
-            # Add failover with weight (no quotes needed for URLs in YAML)
+        url_count++
+        # Print the URL line
+        print
+        # Check if next line has weight
+        getline nextline
+        if (nextline !~ /weight:/) {
+            # Add appropriate weight based on whether this is primary or failover
             match($0, /^[[:space:]]*/)
             indent = substr($0, RSTART, RLENGTH)
-            print indent "- url: " failover
-            print indent "  weight: 1"
-            added = 1
-            next
+            if (url_count == 1) {
+                print indent "  weight: 100"
+            } else {
+                print indent "  weight: 1"
+            }
         }
+        # Print the next line (or skip if we added weight above)
+        if (nextline ~ /weight:/ || nextline !~ /^[[:space:]]*$/) {
+            print nextline
+        }
+        next
     }
     { print }
     ' "$config_file" > "$temp_file"

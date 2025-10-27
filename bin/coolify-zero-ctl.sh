@@ -31,8 +31,12 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Version
-VERSION="1.0.0"
+# Version - read from VERSION file if available
+if [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
+    VERSION=$(cat "$SCRIPT_DIR/../VERSION" | tr -d '\n')
+else
+    VERSION="1.0.0"
+fi
 
 # Show usage
 usage() {
@@ -585,7 +589,7 @@ cmd_validate() {
 
 # Update command
 cmd_update() {
-    echo -e "${BLUE}Updating Coolify Zero to the latest version...${NC}\n"
+    echo -e "${BLUE}Checking for updates...${NC}\n"
 
     # Check if running as root
     if [[ $EUID -ne 0 ]]; then
@@ -593,6 +597,31 @@ cmd_update() {
         echo "Please run with sudo: ${CYAN}sudo coolify-zero update${NC}"
         exit 1
     fi
+
+    # Get current version
+    local current_version="$VERSION"
+    echo -e "${BLUE}Current version: ${BOLD}v${current_version}${NC}"
+
+    # Check latest version from GitHub
+    local version_url="https://raw.githubusercontent.com/light-merlin-dark/coolify-zero/main/VERSION"
+    local latest_version
+
+    if latest_version=$(curl -fsSL "$version_url" | tr -d '\n'); then
+        echo -e "${BLUE}Latest version:  ${BOLD}v${latest_version}${NC}\n"
+    else
+        echo -e "${YELLOW}⚠ Could not fetch latest version from GitHub${NC}"
+        echo -e "${BLUE}Proceeding with update anyway...${NC}\n"
+        latest_version="unknown"
+    fi
+
+    # Compare versions
+    if [[ "$latest_version" != "unknown" ]] && [[ "$current_version" == "$latest_version" ]]; then
+        echo -e "${GREEN}✓ Already on the latest version!${NC}"
+        echo -e "\n${BOLD}No update needed.${NC}"
+        exit 0
+    fi
+
+    echo -e "${BLUE}Update available: ${BOLD}v${current_version} → v${latest_version}${NC}\n"
 
     # Backup current config
     local backup_dir="/tmp/coolify-zero-update-backup-$(date +%s)"
@@ -625,7 +654,8 @@ cmd_update() {
         # Clean up
         rm -f "$temp_install"
 
-        echo -e "\n${BOLD}Updated to:${NC} $(coolify-zero version)"
+        local new_version=$(coolify-zero version | grep -oP 'v\K[0-9.]+')
+        echo -e "\n${BOLD}Updated:${NC} v${current_version} → v${new_version}"
         echo -e "\n${BOLD}Config backup saved at:${NC} $backup_dir"
         echo -e "\n${BOLD}Service status:${NC}"
         systemctl status coolify-zero --no-pager -l | head -10

@@ -175,6 +175,12 @@ install_scripts() {
     cp "$SCRIPT_DIR/bin/coolify-zero-ctl.sh" "$INSTALL_DIR/bin/"
     echo -e "${GREEN}✓ Binary files installed${NC}"
 
+    # Copy VERSION file
+    if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+        cp "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/VERSION"
+        echo -e "${GREEN}✓ Version file installed${NC}"
+    fi
+
     # Make scripts executable
     chmod +x "$INSTALL_DIR/bin/coolify-zero.sh"
     chmod +x "$INSTALL_DIR/bin/coolify-zero-ctl.sh"
