@@ -108,6 +108,24 @@ get_container_labels() {
     docker inspect "$container_id" --format '{{range $k, $v := .Config.Labels}}--label "{{$k}}={{$v}}" {{end}}' 2>/dev/null
 }
 
+# Get container volumes and mounts
+# Usage: get_container_volumes "abc123"
+# Returns: Array of -v flags suitable for docker run
+get_container_volumes() {
+    local container_id="$1"
+
+    if [[ -z "$container_id" ]]; then
+        echo -e "${RED}ERROR: Container ID required${NC}" >&2
+        return 1
+    fi
+
+    check_docker || return 1
+
+    # Get both named volumes and bind mounts
+    # Format: -v source:destination:mode
+    docker inspect "$container_id" --format '{{range .Mounts}}-v "{{.Source}}:{{.Destination}}{{if .Mode}}:{{.Mode}}{{end}}" {{end}}' 2>/dev/null
+}
+
 # Check if container exists (running or stopped)
 # Usage: container_exists "container-name"
 container_exists() {
@@ -257,18 +275,32 @@ create_failover_container() {
     local labels
     labels=$(get_container_labels "$primary_id")
 
+    local volumes
+    volumes=$(get_container_volumes "$primary_id")
+
     echo -e "${BLUE}Creating failover container: $failover_name${NC}"
     echo -e "${BLUE}  Image: $image${NC}"
     echo -e "${BLUE}  Network: $network${NC}"
 
+    # Show volume info if any
+    if [[ -n "$volumes" ]]; then
+        local volume_count=$(echo "$volumes" | grep -o ' -v ' | wc -l | tr -d ' ')
+        echo -e "${BLUE}  Volumes: $volume_count mount(s) from primary${NC}"
+        echo -e "${YELLOW}  ⚠️  Sharing volumes with primary - ensure stateful data is handled correctly${NC}"
+    else
+        echo -e "${YELLOW}  ⚠️  No volumes detected - this should only be used for stateless services${NC}"
+    fi
+
     # Create the failover container
-    # Note: We use eval here because env_vars and labels contain multiple flags
+    # CRITICAL: Must mount the SAME volumes as primary for stateful services!
+    # Note: We use eval here because env_vars, labels, and volumes contain multiple flags
     local create_cmd="docker run -d \
         --name \"$failover_name\" \
         --network \"$network\" \
         --restart unless-stopped \
         $env_vars \
         $labels \
+        $volumes \
         --label \"coolify.managed=false\" \
         \"$image\""
 
@@ -374,6 +406,7 @@ export -f get_container_name
 export -f get_container_image
 export -f get_container_env
 export -f get_container_labels
+export -f get_container_volumes
 export -f container_exists
 export -f container_running
 export -f get_container_health

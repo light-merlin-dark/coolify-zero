@@ -19,36 +19,23 @@ Docker-native • Traefik integration • systemd service • Zero config
 
 ## What It Does
 
-Eliminates the 1-2 minute downtime during Coolify deployments by maintaining hot standby containers.
+Eliminates deployment downtime by maintaining hot standby containers that automatically sync after successful deployments.
 
-- **Problem:** Coolify stops old container before starting new one
-- **Result:** 1-2 minutes of service downtime
-- **Solution:** Hot standby container + Traefik health checks = zero downtime
+**Without Coolify Zero:**
+- Coolify stops old container before starting new one
+- 1-2 minutes of downtime per deployment
+- Users see errors, API clients timeout
 
-## Why?
-
-Your production services shouldn't go offline during deployments.
-
-**Impact:**
-- Users see errors during deploys
-- API clients timeout
-- Lost revenue/trust
-- Manual blue-green workarounds
-
-**This tool:**
-- Maintains failover containers automatically
-- Traefik detects primary down -> routes to failover
-- Primary comes back up -> syncs failover
-- Zero configuration after setup
+**With Coolify Zero:**
+- Hot standby container always ready
+- Traefik routes to failover during deployment
+- Primary comes back up → traffic returns → failover syncs
+- Zero downtime, zero configuration
 
 ## Features
 
-### Automatic Failover
-```bash
-# Manager runs as systemd service
-# Maintains hot standby for each enabled service
-# Syncs after successful deployments
-```
+### Automatic Sync
+Manager runs as systemd service, maintains hot standby containers, and syncs after successful deployments.
 
 ### CLI Management
 ```bash
@@ -64,13 +51,15 @@ failover-ctl logs translation-api -f
 
 ### Traefik Integration
 ```yaml
-# Auto-configures Traefik load balancer
+# Weighted load balancing with health checks creates true failover behavior
 services:
   api-service:
     loadBalancer:
       servers:
         - url: 'http://api-primary:3000'
-        - url: 'http://failover-api:3000'  # Added automatically
+          weight: 101  # Primary preferred
+        - url: 'http://failover-api:3000'
+          weight: 1    # Standby
       healthCheck:
         path: /health
         interval: 10s
@@ -117,29 +106,18 @@ failover-ctl status my-api
 
 ## How It Works
 
-1. **Manager runs as systemd service**
-2. **Monitors enabled services every 60s**
-3. **When primary is healthy and updated:**
-   - Checks failover container version
-   - If mismatch -> recreates failover from primary image
-4. **During Coolify deployment:**
-   - Primary goes down -> Traefik routes to failover
-   - New primary comes up -> Traefik routes back
-   - Manager detects version change -> updates failover
-5. **Result: Zero downtime**
+1. **Manager runs as systemd service**, monitors enabled services every 60s
+2. **When primary is healthy**, checks version against failover
+3. **Version mismatch detected** → recreates failover from primary image
+4. **During deployment:**
+   - Primary goes unhealthy → Traefik routes to failover
+   - New primary comes up → Traefik routes back
+   - Manager syncs failover to new version
 
 ```
-Normal State:
-  User -> Traefik -> Primary (healthy)
-                  -> Failover (standby)
-
-During Deploy:
-  User -> Traefik -> Primary (deploying, unhealthy)
-                  -> Failover (takes traffic)
-
-After Deploy:
-  User -> Traefik -> Primary (healthy, new version)
-                  -> Failover (syncing to new version)
+Normal:    User → Traefik → Primary (healthy) + Failover (standby)
+Deploy:    User → Traefik → Primary (down) → Failover (serving)
+After:     User → Traefik → Primary (new version) + Failover (syncing)
 ```
 
 ## Requirements
@@ -158,7 +136,11 @@ After Deploy:
 **Services must have:**
 - Health check endpoint (e.g., `/health`)
 - Version identifier in health response
-- Stateless or shared state (Redis/DB)
+
+**Volume Mounting:**
+- Failover containers automatically inherit the same volume mounts as primary
+- Works with stateful services (SQLite, file uploads, sessions)
+- Data written during failover is preserved when primary recovers
 
 ## CLI Commands
 
