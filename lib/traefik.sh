@@ -241,6 +241,11 @@ BEGIN { pending_dash = 0; url_count = 0 }
     {
         match($0, /^[[:space:]]*/)
         indent = substr($0, RSTART, RLENGTH)
+        # If the URL line starts with a dash, add 2 spaces for proper YAML indentation
+        if ($0 ~ /^[[:space:]]*-[[:space:]]*url:/) \
+        {
+            indent = indent "  "
+        }
         if (url_count == 1) \
         {
             print indent "weight: 100"
