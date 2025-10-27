@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Development (JIT pattern - keep private)
+docs/
+Makefile
+scripts/
+tests/
+CLAUDE.md
+
+# Node modules (for test scripts)
+node_modules/
+package.json
+bun.lock
+
+# Config (may contain sensitive data)
+config.yaml
+.env
+
+# Test artifacts
+test-output/
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.zed
+@meta
+
+# Build artifacts
+dist/
+build/

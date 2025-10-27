@@ -1,0 +1,24 @@
+[Unit]
+Description=Coolify Zero - Zero-downtime deployment manager
+Documentation=https://github.com/light-merlin-dark/coolify-zero
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/opt/failover-manager/bin/failover-manager.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=failover-manager
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Environment
+Environment="CONFIG_FILE=/etc/failover-manager/config.yaml"
+
+[Install]
+WantedBy=multi-user.target
