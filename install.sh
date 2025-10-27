@@ -191,11 +191,11 @@ create_config() {
     echo -e "${BLUE}Creating configuration file...${NC}"
 
     if [[ -f "$CONFIG_DIR/config.yaml" ]]; then
-        echo -e "${YELLOW}⚠ Config file already exists, creating backup${NC}"
+        echo -e "${GREEN}✓ Config file already exists, preserving it${NC}"
+        echo -e "${BLUE}  (Backup created at: $CONFIG_DIR/config.yaml.backup.$(date +%s))${NC}"
         cp "$CONFIG_DIR/config.yaml" "$CONFIG_DIR/config.yaml.backup.$(date +%s)"
-    fi
-
-    cat > "$CONFIG_DIR/config.yaml" <<'EOF'
+    else
+        cat > "$CONFIG_DIR/config.yaml" <<'EOF'
 # Coolify Zero Configuration
 
 manager:
@@ -213,8 +213,10 @@ manager:
 services: {}
 EOF
 
-    chmod 600 "$CONFIG_DIR/config.yaml"
-    echo -e "${GREEN}✓ Configuration file created: $CONFIG_DIR/config.yaml${NC}\n"
+        chmod 600 "$CONFIG_DIR/config.yaml"
+        echo -e "${GREEN}✓ Configuration file created: $CONFIG_DIR/config.yaml${NC}"
+    fi
+    echo ""
 }
 
 # Create systemd service
