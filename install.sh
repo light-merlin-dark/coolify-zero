@@ -15,9 +15,31 @@ INSTALL_DIR="/opt/coolify-zero"
 CONFIG_DIR="/etc/coolify-zero"
 BIN_DIR="/usr/local/bin"
 SYSTEMD_DIR="/etc/systemd/system"
+GITHUB_REPO="light-merlin-dark/coolify-zero"
+GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
 
 # Get script directory (where this install.sh is located)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# If piped from curl, BASH_SOURCE will be empty, so download files from GitHub
+if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "bash" ]]; then
+    # Running from curl pipe - download to temp directory
+    SCRIPT_DIR=$(mktemp -d)
+    echo -e "${BLUE}Downloading files from GitHub...${NC}"
+
+    # Download all necessary files
+    mkdir -p "$SCRIPT_DIR/bin" "$SCRIPT_DIR/lib" "$SCRIPT_DIR/systemd"
+    curl -fsSL "${GITHUB_RAW}/bin/coolify-zero.sh" -o "$SCRIPT_DIR/bin/coolify-zero.sh"
+    curl -fsSL "${GITHUB_RAW}/bin/coolify-zero-ctl.sh" -o "$SCRIPT_DIR/bin/coolify-zero-ctl.sh"
+    curl -fsSL "${GITHUB_RAW}/lib/config.sh" -o "$SCRIPT_DIR/lib/config.sh"
+    curl -fsSL "${GITHUB_RAW}/lib/docker.sh" -o "$SCRIPT_DIR/lib/docker.sh"
+    curl -fsSL "${GITHUB_RAW}/lib/health.sh" -o "$SCRIPT_DIR/lib/health.sh"
+    curl -fsSL "${GITHUB_RAW}/lib/traefik.sh" -o "$SCRIPT_DIR/lib/traefik.sh"
+    curl -fsSL "${GITHUB_RAW}/systemd/coolify-zero.service" -o "$SCRIPT_DIR/systemd/coolify-zero.service"
+
+    echo -e "${GREEN}✓ Files downloaded${NC}\n"
+else
+    # Running from local file
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
 echo -e "${BOLD}${BLUE}=== Coolify Zero Installation ===${NC}\n"
 
@@ -135,6 +157,7 @@ install_scripts() {
     cp "$SCRIPT_DIR/lib/config.sh" "$INSTALL_DIR/lib/"
     cp "$SCRIPT_DIR/lib/docker.sh" "$INSTALL_DIR/lib/"
     cp "$SCRIPT_DIR/lib/health.sh" "$INSTALL_DIR/lib/"
+    cp "$SCRIPT_DIR/lib/traefik.sh" "$INSTALL_DIR/lib/"
     echo -e "${GREEN}✓ Library files installed${NC}"
 
     # Copy binaries
@@ -316,6 +339,11 @@ main() {
     create_systemd_service
     enable_service
     show_success
+
+    # Cleanup temp directory if we downloaded files
+    if [[ "$SCRIPT_DIR" == /tmp/* ]]; then
+        rm -rf "$SCRIPT_DIR"
+    fi
 }
 
 # Run main
