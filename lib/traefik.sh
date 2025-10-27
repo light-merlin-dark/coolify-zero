@@ -212,7 +212,7 @@ update_load_balancer_config() {
     cp "$config_file" "${config_file}.backup-$(date +%s)"
 
     # Find the line with the first server URL and add failover after it
-    # This uses sed to find "- url:" and add another "- url:" line after it
+    # Use awk to only modify the servers section, preserve everything else as-is
     local temp_file="${config_file}.tmp"
 
     awk -v failover="$failover_url" '
@@ -231,10 +231,10 @@ update_load_balancer_config() {
             } else {
                 print nextline
             }
-            # Add failover with weight
+            # Add failover with weight (no quotes needed for URLs in YAML)
             match($0, /^[[:space:]]*/)
             indent = substr($0, RSTART, RLENGTH)
-            print indent "- url: '\''" failover "'\''"
+            print indent "- url: " failover
             print indent "  weight: 1"
             added = 1
             next
