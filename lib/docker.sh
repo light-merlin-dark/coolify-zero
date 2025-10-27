@@ -333,6 +333,51 @@ recreate_failover() {
     create_failover_container "$primary_id" "$failover_name" "$network"
 }
 
+# Get container image digest (unique identifier)
+# Usage: get_container_image_digest "container-name"
+get_container_image_digest() {
+    local container_name="$1"
+
+    if [[ -z "$container_name" ]]; then
+        echo -e "${RED}ERROR: Container name required${NC}" >&2
+        return 1
+    fi
+
+    check_docker || return 1
+
+    # Get the image ID (digest) which uniquely identifies the image
+    docker inspect "$container_name" --format '{{.Image}}' 2>/dev/null
+}
+
+# Compare two containers by their image digests
+# Usage: images_match "container1" "container2"
+# Returns: 0 if images match, 1 if different
+images_match() {
+    local container1="$1"
+    local container2="$2"
+
+    if [[ -z "$container1" || -z "$container2" ]]; then
+        return 1
+    fi
+
+    local digest1
+    local digest2
+
+    digest1=$(get_container_image_digest "$container1")
+    digest2=$(get_container_image_digest "$container2")
+
+    if [[ -z "$digest1" || -z "$digest2" ]]; then
+        return 1
+    fi
+
+    # Compare digests
+    if [[ "$digest1" == "$digest2" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Get container IP address on a specific network
 # Usage: get_container_ip "container-name" "network-name"
 get_container_ip() {
@@ -404,6 +449,8 @@ export -f check_docker
 export -f find_container
 export -f get_container_name
 export -f get_container_image
+export -f get_container_image_digest
+export -f images_match
 export -f get_container_env
 export -f get_container_labels
 export -f get_container_volumes

@@ -45,11 +45,11 @@ else
 fi
 
 # Remove CLI symlink
-if [[ -L /usr/local/bin/failover-ctl ]]; then
-    rm -f /usr/local/bin/failover-ctl
+if [[ -L /usr/local/bin/coolify-zero ]]; then
+    rm -f /usr/local/bin/coolify-zero
     echo -e "${GREEN}✓ CLI symlink removed${NC}"
-elif [[ -f /usr/local/bin/failover-ctl ]]; then
-    rm -f /usr/local/bin/failover-ctl
+elif [[ -f /usr/local/bin/coolify-zero ]]; then
+    rm -f /usr/local/bin/coolify-zero
     echo -e "${GREEN}✓ CLI binary removed${NC}"
 else
     echo -e "${YELLOW}⚠ CLI not found${NC}"

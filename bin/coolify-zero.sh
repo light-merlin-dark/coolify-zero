@@ -115,9 +115,9 @@ process_service() {
     health_port=$(get_service_setting "$service" "health_port")
     version_jq_path=$(get_service_setting "$service" "version_jq_path")
 
-    # Validate configuration
-    if [[ -z "$primary_pattern" || -z "$health_endpoint" || -z "$health_port" || -z "$version_jq_path" ]]; then
-        log "error" "Incomplete configuration for service: $service"
+    # Validate configuration (version_jq_path is optional)
+    if [[ -z "$primary_pattern" || -z "$health_endpoint" || -z "$health_port" ]]; then
+        log "error" "Incomplete configuration for service: $service (requires primary_pattern, health_endpoint, health_port)"
         return 1
     fi
 
@@ -143,39 +143,76 @@ process_service() {
 
     log "debug" "Primary $primary_name is healthy"
 
-    # Get primary version
-    local primary_version
-    primary_version=$(get_version "$primary_name" "$health_endpoint" "$health_port" "$version_jq_path")
-
-    if [[ -z "$primary_version" || "$primary_version" == "null" ]]; then
-        log "warn" "Cannot get version from primary $primary_name"
-        return 1
-    fi
-
-    log "debug" "Primary version: $primary_version"
-
     # Check failover container
     local failover_name="failover-${service}"
+    local needs_sync=false
+    local sync_reason=""
+    local comparison_method=""
 
-    # Get failover version (if exists)
-    local failover_version=""
-    if container_exists "$failover_name"; then
-        failover_version=$(get_version "$failover_name" "$health_endpoint" "$health_port" "$version_jq_path" 2>/dev/null || echo "")
-        log "debug" "Failover version: ${failover_version:-unknown}"
-    else
+    # Check if failover exists
+    if ! container_exists "$failover_name"; then
         log "info" "Failover container $failover_name does not exist, will create"
+        needs_sync=true
+        sync_reason="failover doesn't exist"
+    else
+        # Failover exists, determine if sync is needed
+        # Try version comparison first (if configured)
+        if [[ -n "$version_jq_path" ]]; then
+            log "debug" "Attempting version comparison (using $version_jq_path)"
+
+            local primary_version
+            primary_version=$(get_version "$primary_name" "$health_endpoint" "$health_port" "$version_jq_path" 2>/dev/null)
+
+            local failover_version
+            failover_version=$(get_version "$failover_name" "$health_endpoint" "$health_port" "$version_jq_path" 2>/dev/null)
+
+            if [[ -n "$primary_version" && "$primary_version" != "null" && -n "$failover_version" && "$failover_version" != "null" ]]; then
+                # Both versions retrieved successfully
+                comparison_method="version"
+                log "debug" "Primary version: $primary_version"
+                log "debug" "Failover version: $failover_version"
+
+                if ! versions_match "$primary_version" "$failover_version"; then
+                    needs_sync=true
+                    sync_reason="version mismatch ($failover_version -> $primary_version)"
+                else
+                    log "debug" "Service $service is in sync (version: $primary_version)"
+                fi
+            else
+                log "debug" "Version comparison failed (primary: ${primary_version:-null}, failover: ${failover_version:-null}), falling back to image comparison"
+                comparison_method="image"
+            fi
+        else
+            log "debug" "No version_jq_path configured, using image comparison"
+            comparison_method="image"
+        fi
+
+        # Fall back to image comparison if version comparison wasn't possible
+        if [[ "$comparison_method" == "image" ]]; then
+            log "debug" "Comparing container images"
+
+            if images_match "$primary_name" "$failover_name"; then
+                log "debug" "Service $service is in sync (same image)"
+            else
+                needs_sync=true
+                local primary_image_digest
+                local failover_image_digest
+                primary_image_digest=$(get_container_image_digest "$primary_name")
+                failover_image_digest=$(get_container_image_digest "$failover_name")
+                sync_reason="image mismatch (${failover_image_digest:0:12}... -> ${primary_image_digest:0:12}...)"
+            fi
+        fi
     fi
 
-    # Check if versions match
-    if [[ -n "$failover_version" ]] && versions_match "$primary_version" "$failover_version"; then
-        log "debug" "Service $service is in sync (version: $primary_version)"
+    # Perform sync if needed
+    if [[ "$needs_sync" == "false" ]]; then
         return 0
     fi
 
-    # Versions don't match or failover doesn't exist - sync needed
-    log "info" "Syncing failover for $service: $primary_version"
-    log "info" "  Primary: $primary_name -> $primary_version"
-    log "info" "  Failover: $failover_name -> ${failover_version:-none}"
+    # Sync needed
+    log "info" "Syncing failover for $service: $sync_reason"
+    log "info" "  Primary: $primary_name"
+    log "info" "  Failover: $failover_name"
 
     # Recreate failover
     if recreate_failover "$primary_id" "$failover_name" "$DOCKER_NETWORK"; then
@@ -186,9 +223,18 @@ process_service() {
 
         # Verify failover health
         if http_health_check "$failover_name" "$health_endpoint" "$health_port"; then
-            local new_version
-            new_version=$(get_version "$failover_name" "$health_endpoint" "$health_port" "$version_jq_path" 2>/dev/null || echo "unknown")
-            log "info" "✓ Failover $failover_name is healthy (version: $new_version)"
+            local status_msg="✓ Failover $failover_name is healthy"
+
+            # Add version/image info if available
+            if [[ -n "$version_jq_path" ]]; then
+                local new_version
+                new_version=$(get_version "$failover_name" "$health_endpoint" "$health_port" "$version_jq_path" 2>/dev/null || echo "unknown")
+                if [[ -n "$new_version" && "$new_version" != "unknown" && "$new_version" != "null" ]]; then
+                    status_msg="$status_msg (version: $new_version)"
+                fi
+            fi
+
+            log "info" "$status_msg"
         else
             log "warn" "⚠ Failover $failover_name created but not healthy yet (may need more time)"
         fi

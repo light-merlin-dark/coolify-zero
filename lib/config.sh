@@ -150,7 +150,12 @@ add_service() {
         yq eval -i ".services.$service.primary_pattern = \"$primary_pattern\"" "$CONFIG_FILE"
         yq eval -i ".services.$service.health_endpoint = \"$health_endpoint\"" "$CONFIG_FILE"
         yq eval -i ".services.$service.health_port = $health_port" "$CONFIG_FILE"
-        yq eval -i ".services.$service.version_jq_path = \"$version_path\"" "$CONFIG_FILE"
+
+        # Only set version_jq_path if provided (optional)
+        if [[ -n "$version_path" ]]; then
+            yq eval -i ".services.$service.version_jq_path = \"$version_path\"" "$CONFIG_FILE"
+        fi
+
         echo -e "${GREEN}✓ Service '$service' added to config${NC}"
     else
         echo -e "${YELLOW}WARNING: yq not found. Cannot add service automatically.${NC}" >&2
@@ -162,7 +167,14 @@ add_service() {
         echo "    primary_pattern: \"$primary_pattern\"" >&2
         echo "    health_endpoint: \"$health_endpoint\"" >&2
         echo "    health_port: $health_port" >&2
-        echo "    version_jq_path: \"$version_path\"" >&2
+
+        # Only show version_jq_path if provided
+        if [[ -n "$version_path" ]]; then
+            echo "    version_jq_path: \"$version_path\"" >&2
+        else
+            echo "    # version_jq_path: (optional - will use image comparison if not set)" >&2
+        fi
+
         return 1
     fi
 }
@@ -189,8 +201,8 @@ validate_service_config() {
     local service="$1"
     local errors=0
 
-    # Check required fields
-    local required_fields=("primary_pattern" "health_endpoint" "health_port" "version_jq_path")
+    # Check required fields (version_jq_path is optional)
+    local required_fields=("primary_pattern" "health_endpoint" "health_port")
 
     for field in "${required_fields[@]}"; do
         local value
@@ -201,6 +213,13 @@ validate_service_config() {
             errors=$((errors + 1))
         fi
     done
+
+    # Check optional fields (just log if not present)
+    local version_jq_path
+    version_jq_path=$(get_service_setting "$service" "version_jq_path")
+    if [[ -z "$version_jq_path" || "$version_jq_path" == "null" ]]; then
+        echo -e "${YELLOW}INFO: No version_jq_path configured for '$service' (will use image comparison)${NC}"
+    fi
 
     # Validate health_port is a number
     local port
@@ -303,7 +322,7 @@ services:
   #   primary_pattern: "translation-api-eo"
   #   health_endpoint: "/health"
   #   health_port: 3000
-  #   version_jq_path: ".engineVersion"
+  #   version_jq_path: ".engineVersion"  # Optional - uses image comparison if not set
   #   traefik_config_path: "/data/coolify/proxy/dynamic/translation-service.yaml"
 EOF
 

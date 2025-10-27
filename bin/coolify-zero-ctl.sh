@@ -51,7 +51,7 @@ ${BOLD}COMMANDS:${NC}
     --primary-pattern <pattern>   Pattern to find primary container
     --health-endpoint <path>      Health check endpoint (default: /health)
     --health-port <port>          Health check port (default: 3000)
-    --version-path <jq-path>      JQ path to version (default: .version)
+    --version-path <jq-path>      JQ path to version (optional, uses image comparison if not set)
 
   ${GREEN}disable${NC} <service>             Disable and cleanup failover
 
@@ -74,12 +74,18 @@ ${BOLD}COMMANDS:${NC}
   ${GREEN}help${NC}                          Show this help message
 
 ${BOLD}EXAMPLES:${NC}
-  # Enable failover for translation-api
+  # Enable failover with version comparison
   coolify-zero enable translation-api \\
     --primary-pattern='translation-api-eo' \\
     --health-endpoint='/health' \\
     --health-port=3000 \\
     --version-path='.engineVersion'
+
+  # Enable failover with image comparison (no version path)
+  coolify-zero enable my-service \\
+    --primary-pattern='my-service-' \\
+    --health-endpoint='/health' \\
+    --health-port=3000
 
   # Check status
   coolify-zero status translation-api
@@ -99,7 +105,7 @@ cmd_enable() {
     local primary_pattern=""
     local health_endpoint="/health"
     local health_port="3000"
-    local version_path=".version"
+    local version_path=""  # Optional, will use image comparison if empty
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -188,9 +194,20 @@ cmd_enable() {
     sleep 2  # Give it a moment to start
 
     if http_health_check "$failover_name" "$health_endpoint" "$health_port"; then
-        local version
-        version=$(get_version "$failover_name" "$health_endpoint" "$health_port" "$version_path" 2>/dev/null || echo "unknown")
-        echo -e "${GREEN}✓ Failover is healthy (version: $version)${NC}"
+        local status_msg="✓ Failover is healthy"
+
+        # Show version if version_path is configured
+        if [[ -n "$version_path" ]]; then
+            local version
+            version=$(get_version "$failover_name" "$health_endpoint" "$health_port" "$version_path" 2>/dev/null || echo "unknown")
+            if [[ -n "$version" && "$version" != "unknown" && "$version" != "null" ]]; then
+                status_msg="$status_msg (version: $version)"
+            fi
+        else
+            status_msg="$status_msg (using image comparison mode)"
+        fi
+
+        echo -e "${GREEN}$status_msg${NC}"
     else
         echo -e "${YELLOW}⚠ Failover created but not healthy yet (may need more time)${NC}" >&2
     fi
