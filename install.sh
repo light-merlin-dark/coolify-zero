@@ -20,7 +20,7 @@ GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
 
 # Get script directory (where this install.sh is located)
 # If piped from curl, BASH_SOURCE will be empty, so download files from GitHub
-if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "bash" ]]; then
+if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]:-}" == "bash" ]]; then
     # Running from curl pipe - download to temp directory
     SCRIPT_DIR=$(mktemp -d)
     echo -e "${BLUE}Downloading files from GitHub...${NC}"
