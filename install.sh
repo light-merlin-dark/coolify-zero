@@ -19,13 +19,27 @@ GITHUB_REPO="light-merlin-dark/coolify-zero"
 GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
 
 # Get script directory (where this install.sh is located)
-# If piped from curl, BASH_SOURCE will be empty, so download files from GitHub
-if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]:-}" == "bash" ]]; then
+# Check if supporting files exist, otherwise download from GitHub
+if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]:-}" != "bash" ]]; then
+    # Script is being run from a file - check if supporting files exist
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ ! -f "$SCRIPT_DIR/bin/coolify-zero.sh" ]]; then
+        # Files don't exist in script directory - download from GitHub
+        echo -e "${BLUE}Supporting files not found, downloading from GitHub...${NC}"
+        SCRIPT_DIR=$(mktemp -d)
+        DOWNLOAD_FILES=true
+    else
+        DOWNLOAD_FILES=false
+    fi
+else
     # Running from curl pipe - download to temp directory
-    SCRIPT_DIR=$(mktemp -d)
     echo -e "${BLUE}Downloading files from GitHub...${NC}"
+    SCRIPT_DIR=$(mktemp -d)
+    DOWNLOAD_FILES=true
+fi
 
-    # Download all necessary files
+# Download files if needed
+if [[ "$DOWNLOAD_FILES" == "true" ]]; then
     mkdir -p "$SCRIPT_DIR/bin" "$SCRIPT_DIR/lib" "$SCRIPT_DIR/systemd"
     curl -fsSL "${GITHUB_RAW}/bin/coolify-zero.sh" -o "$SCRIPT_DIR/bin/coolify-zero.sh"
     curl -fsSL "${GITHUB_RAW}/bin/coolify-zero-ctl.sh" -o "$SCRIPT_DIR/bin/coolify-zero-ctl.sh"
@@ -34,11 +48,7 @@ if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]:-}" == "bash" ]]; then
     curl -fsSL "${GITHUB_RAW}/lib/health.sh" -o "$SCRIPT_DIR/lib/health.sh"
     curl -fsSL "${GITHUB_RAW}/lib/traefik.sh" -o "$SCRIPT_DIR/lib/traefik.sh"
     curl -fsSL "${GITHUB_RAW}/systemd/coolify-zero.service" -o "$SCRIPT_DIR/systemd/coolify-zero.service"
-
     echo -e "${GREEN}✓ Files downloaded${NC}\n"
-else
-    # Running from local file
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 echo -e "${BOLD}${BLUE}=== Coolify Zero Installation ===${NC}\n"
@@ -341,7 +351,7 @@ main() {
     show_success
 
     # Cleanup temp directory if we downloaded files
-    if [[ "$SCRIPT_DIR" == /tmp/* ]]; then
+    if [[ "${DOWNLOAD_FILES:-false}" == "true" ]]; then
         rm -rf "$SCRIPT_DIR"
     fi
 }
