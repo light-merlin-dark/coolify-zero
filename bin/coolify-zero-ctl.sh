@@ -372,12 +372,34 @@ show_service_status() {
             echo -e "    Status: ${GREEN}✓ Healthy${NC}"
             echo -e "    Version: $failover_version"
 
-            # Check version sync
+            # Check sync status
             if [[ -n "$primary_id" ]]; then
-                local primary_version
-                primary_version=$(get_version "$primary_name" "$health_endpoint" "$health_port" "$version_path" 2>/dev/null || echo "")
+                local in_sync=false
 
-                if [[ -n "$primary_version" ]] && versions_match "$primary_version" "$failover_version"; then
+                # Try version comparison first (if version_path is configured)
+                if [[ -n "$version_path" ]]; then
+                    local primary_version
+                    primary_version=$(get_version "$primary_name" "$health_endpoint" "$health_port" "$version_path" 2>/dev/null || echo "")
+
+                    if [[ -n "$primary_version" && "$primary_version" != "unknown" && "$primary_version" != "null" ]]; then
+                        # Version comparison is available
+                        if versions_match "$primary_version" "$failover_version"; then
+                            in_sync=true
+                        fi
+                    else
+                        # Fall back to image comparison
+                        if images_match "$primary_name" "$failover_name"; then
+                            in_sync=true
+                        fi
+                    fi
+                else
+                    # No version_path configured, use image comparison
+                    if images_match "$primary_name" "$failover_name"; then
+                        in_sync=true
+                    fi
+                fi
+
+                if [[ "$in_sync" == "true" ]]; then
                     echo -e "    Sync: ${GREEN}✓ In sync${NC}"
                 else
                     echo -e "    Sync: ${YELLOW}⚠ Out of sync${NC} (manager will sync soon)"
