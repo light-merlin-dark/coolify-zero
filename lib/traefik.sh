@@ -328,14 +328,19 @@ auto_configure_traefik() {
     if [[ -n "$config_file" ]]; then
         echo -e "${BLUE}Found existing config: $config_file${NC}"
 
-        # Check if already has failover
+        # Check if already has failover with weights
         if config_has_failover "$config_file" "$failover_name"; then
-            echo -e "${GREEN}✓ Config already includes failover URL${NC}"
-            return 0
+            # Check if weights are present
+            if grep -q "weight:" "$config_file"; then
+                echo -e "${GREEN}✓ Config already includes failover URL with weights${NC}"
+                return 0
+            else
+                echo -e "${YELLOW}⚠ Config has failover but no weights, updating...${NC}"
+            fi
         fi
 
-        # Update existing config
-        echo -e "${BLUE}Adding failover URL to existing config...${NC}"
+        # Update existing config (add failover and weights)
+        echo -e "${BLUE}Adding failover URL with weights to existing config...${NC}"
         if update_load_balancer_config "$config_file" "$failover_url"; then
             restart_traefik
             return 0
