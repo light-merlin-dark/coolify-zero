@@ -1,6 +1,6 @@
 #!/bin/bash
 # install.sh - One-command installation script for Coolify Zero
-set -euo pipefail
+set -eo pipefail
 
 # Color codes
 RED='\033[0;31m'
