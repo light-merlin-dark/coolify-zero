@@ -216,30 +216,58 @@ update_load_balancer_config() {
     local temp_file="${config_file}.tmp"
 
     awk -v failover="$failover_url" '
-    /^[[:space:]]*- url:/ {
-        url_count++
-        # Print the URL line
-        print
-        # Check if next line has weight
-        getline nextline
-        if (nextline !~ /weight:/) {
-            # Add appropriate weight based on whether this is primary or failover
-            match($0, /^[[:space:]]*/)
-            indent = substr($0, RSTART, RLENGTH)
-            if (url_count == 1) {
-                print indent "  weight: 100"
-            } else {
-                print indent "  weight: 1"
-            }
-        }
-        # Print the next line (or skip if we added weight above)
-        if (nextline ~ /weight:/ || nextline !~ /^[[:space:]]*$/) {
-            print nextline
-        }
-        next
+BEGIN { pending_dash = 0; url_count = 0 }
+
+# Match standalone dash (YAML list item)
+/^[[:space:]]*-[[:space:]]*$/ \
+{
+    pending_dash = 1
+    dash_line = $0
+    next
+}
+
+# Match url: line (either standalone or with dash prefix)
+/^[[:space:]]*-?[[:space:]]*url:/ \
+{
+    url_count++
+    if (pending_dash) \
+    {
+        print dash_line
+        pending_dash = 0
     }
-    { print }
-    ' "$config_file" > "$temp_file"
+    print
+    getline nextline
+    if (nextline !~ /weight:/) \
+    {
+        match($0, /^[[:space:]]*/)
+        indent = substr($0, RSTART, RLENGTH)
+        if (url_count == 1) \
+        {
+            print indent "weight: 100"
+        } \
+        else \
+        {
+            print indent "weight: 1"
+        }
+    }
+    if (nextline ~ /[^ \t]/) \
+    {
+        print nextline
+    }
+    next
+}
+
+# Default action
+\
+{
+    if (pending_dash) \
+    {
+        print dash_line
+        pending_dash = 0
+    }
+    print
+}
+' "$config_file" > "$temp_file"
 
     if [[ $? -eq 0 ]]; then
         mv "$temp_file" "$config_file"
