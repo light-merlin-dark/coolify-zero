@@ -48,6 +48,7 @@ if [[ "$DOWNLOAD_FILES" == "true" ]]; then
     curl -fsSL "${GITHUB_RAW}/lib/health.sh" -o "$SCRIPT_DIR/lib/health.sh"
     curl -fsSL "${GITHUB_RAW}/lib/traefik.sh" -o "$SCRIPT_DIR/lib/traefik.sh"
     curl -fsSL "${GITHUB_RAW}/systemd/coolify-zero.service" -o "$SCRIPT_DIR/systemd/coolify-zero.service"
+    curl -fsSL "${GITHUB_RAW}/VERSION" -o "$SCRIPT_DIR/VERSION"
     echo -e "${GREEN}✓ Files downloaded${NC}\n"
 fi
 
